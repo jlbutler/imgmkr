@@ -14,13 +14,13 @@ imgmkr creates mock OCI images for testing purposes. It allows you to create ima
 ## Installation
 
 ```bash
-go install github.com/yourusername/imgmkr@latest
+go install github.com/jlbutler/imgmkr@latest
 ```
 
 Or build from source:
 
 ```bash
-git clone https://github.com/yourusername/imgmkr.git
+git clone https://github.com/jlbutler/imgmkr.git
 cd imgmkr
 go build
 ```
@@ -61,4 +61,4 @@ imgmkr --num-layers 2 --layer-sizes 1MB,1GB test-image:v1
 
 ## License
 
-[MIT License](LICENSE)
+[MIT No Attribution License](LICENSE)

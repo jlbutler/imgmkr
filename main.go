@@ -23,8 +23,9 @@ const (
 
 // Command line arguments
 var (
-	numLayers  = flag.Int("num-layers", 0, "Number of layers to create")
-	layerSizes = flag.String("layer-sizes", "", "Comma-separated list of layer sizes (e.g., 512KB,1MB,2GB)")
+	numLayers    = flag.Int("num-layers", 0, "Number of layers to create")
+	layerSizes   = flag.String("layer-sizes", "", "Comma-separated list of layer sizes (e.g., 512KB,1MB,2GB)")
+	tmpdirPrefix = flag.String("tmpdir-prefix", "", "Directory prefix for temporary build files (default: system temp dir)")
 )
 
 // parseSize parses a string like "512KB", "1.5MB", "2.75GB" into bytes
@@ -80,8 +81,8 @@ func parseSizes(sizesStr string) ([]int64, error) {
 }
 
 // createTempDir creates a temporary directory for building the image
-func createTempDir() (string, error) {
-	tempDir, err := os.MkdirTemp("", "imgmkr-")
+func createTempDir(prefix string) (string, error) {
+	tempDir, err := os.MkdirTemp(prefix, "imgmkr-")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp directory: %w", err)
 	}
@@ -243,7 +244,7 @@ func main() {
 
 	// Create a temporary build directory
 	fmt.Println("Creating temporary build directory...")
-	buildDir, err := createTempDir()
+	buildDir, err := createTempDir(*tmpdirPrefix)
 	if err != nil {
 		log.Fatalf("Error creating temporary directory: %v", err)
 	}

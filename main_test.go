@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"testing"
 )
 
@@ -94,5 +95,31 @@ func TestFormatSize(t *testing.T) {
 		if result != test.expected {
 			t.Errorf("For input %d, expected %q, got %q", test.input, test.expected, result)
 		}
+	}
+}
+func TestCreateTempDir(t *testing.T) {
+	// Test with empty prefix (should use system default)
+	tempDir1, err := createTempDir("")
+	if err != nil {
+		t.Errorf("Unexpected error creating temp dir with empty prefix: %v", err)
+	}
+	defer os.RemoveAll(tempDir1)
+
+	// Verify directory exists
+	if _, err := os.Stat(tempDir1); os.IsNotExist(err) {
+		t.Errorf("Temp directory was not created: %s", tempDir1)
+	}
+
+	// Test with custom prefix
+	customPrefix := "/tmp"
+	tempDir2, err := createTempDir(customPrefix)
+	if err != nil {
+		t.Errorf("Unexpected error creating temp dir with custom prefix: %v", err)
+	}
+	defer os.RemoveAll(tempDir2)
+
+	// Verify directory exists and has correct prefix
+	if _, err := os.Stat(tempDir2); os.IsNotExist(err) {
+		t.Errorf("Temp directory was not created: %s", tempDir2)
 	}
 }

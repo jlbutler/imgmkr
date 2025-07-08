@@ -28,13 +28,14 @@ go build
 ## Usage
 
 ```bash
-imgmkr --num-layers [int] --layer-sizes [int,..] repo:tag
+imgmkr --num-layers [int] --layer-sizes [sizes] [--tmpdir-prefix [path]] repo:tag
 ```
 
 ### Parameters
 
 - `--num-layers`: Required. Total number of layers to include in the image.
 - `--layer-sizes`: Required. Comma-separated list of layer sizes with KB, MB, or GB suffixes (e.g., 512KB,1MB,2GB).
+- `--tmpdir-prefix`: Optional. Directory prefix for temporary build files. If not specified, uses the system default temp directory. Useful for very large images that might exceed tmpfs capacity.
 - `repo:tag`: Required. Repository and tag for the built image.
 
 ### Examples
@@ -49,6 +50,12 @@ Create an image with 2 layers, one small and one large:
 
 ```bash
 imgmkr --num-layers 2 --layer-sizes 1MB,1GB test-image:v1
+```
+
+Create a very large image using rootfs instead of tmpfs:
+
+```bash
+imgmkr --num-layers 3 --layer-sizes 1GB,2GB,5GB --tmpdir-prefix /tmp large-image:v1
 ```
 
 ## How It Works

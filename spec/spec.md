@@ -1,7 +1,8 @@
 # Project Specification
 
 ## 1. Project Overview
-- **Project Name**: image-maker
+
+- **Project Name**: imgmkr
 - **Version**: 0.1
 - **Description**: A simple command line utility for creating test OCI images
 - **Target Audience**: Anyone who wants mock images of varying sizes and layer configurations
@@ -22,6 +23,7 @@ This utility creates mock OCI images for testing purposes. This enables a set of
 - Image base layers are scratch layers, and each subsequent can be added with `ADD` command in Dockerfile to make up the requested total number of layers
 
 ### 2.2 Non-Functional Requirements
+
 - **Performance**: The utility should be fairly quick, but image creation performance is not a main consideration
 - **Usability**: As a typical command line utility, it should have help and usage for the command and its options and arguments
 - **Compatibility**: Images should be built for linux/amd64 by default
@@ -30,20 +32,20 @@ This utility creates mock OCI images for testing purposes. This enables a set of
 
 ### 3.1 User Interface
 
-image-maker --num-layers [int] --layer-sizes [int,..] repo:tag
+imgmkr --num-layers [int] --layer-sizes [int,..] repo:tag
 
 - num-layers: required, total number of layers to include
-- layer-sizes:  required, comma-delineated list of image sizes in KB, MB, or GB (where KB is 1024 bytes, etc)
+- layer-sizes: required, comma-delineated list of image sizes in KB, MB, or GB (where KB is 1024 bytes, etc)
 
-image-maker will create a local image by creating mock data and creating a custom Dockerfile to achieve the desired image configuration. The number of layers is specified by `num-layers`, and the image layer sizes detailed by a comma-delineated list of sizes in MB specified by `layer-sizes`. 
+imgmkr will create a local image by creating mock data and creating a custom Dockerfile to achieve the desired image configuration. The number of layers is specified by `num-layers`, and the image layer sizes detailed by a comma-delineated list of sizes in MB specified by `layer-sizes`.
 
 ### 3.2 Technology Stack
 
-This is a simple utility and doesn't require direct integration with other components, but other components and 3rd party libraries could be used.  It does require docker, finch, or some other means of building images to be installed and present.
+This is a simple utility and doesn't require direct integration with other components, but other components and 3rd party libraries could be used. It does require docker, finch, or some other means of building images to be installed and present.
 
 ## 4. Implementation Details
 
-### 4.1  Runtime
+### 4.1 Runtime
 
 Once the utility is invoked, the options and arguments are checked for validity, then each of the stages below are executed (data generation, image spec creation, image creation, and cleanup). The utility should provide status messages regarding its progress.
 
@@ -54,12 +56,12 @@ Each layer is populated by a single file of the size specified for that layer. T
 For example:
 
 /tmp/foo-build/
-  layer1/1GB-file
-  layer2/4GB-file
-  layer3/2GB-file
-  layer4/512MB-file
-  layer5/128MB-file
-  layer6/512KB-file
+layer1/1GB-file
+layer2/4GB-file
+layer3/2GB-file
+layer4/512MB-file
+layer5/128MB-file
+layer6/512KB-file
 
 ### 4.3 Image specification
 
@@ -82,12 +84,14 @@ The image is then built using finch, docker, or other utility. On MacOS, use fin
 The temp build directory and all its contents are removed once the image is built.
 
 ## 5. Constraints and Assumptions
+
 - The utility is not intended to be a full fledged image builder, but rather a simple utility for creating mock images for testing purposes.
 - Files within mock layers are real files with data, not sparse files.
 - Built images are OCI compliant and can be pushed to an OCI registry like ECR.
 - Image entrypoints and configuration are not important, testing is focused on end-to-end image pull testing (layer transfer, layer unpack, checksum, and local store write).
 
 ## 5. Success Criteria
+
 - Users can create one-off test images of varying layouts with a single invocation.
 
 ## 6. Future Enhancements

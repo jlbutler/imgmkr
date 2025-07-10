@@ -92,6 +92,16 @@ imgmkr provides real-time progress updates during layer creation, including:
 
 This is especially useful when creating large images with multiple layers.
 
+## Graceful Shutdown
+
+imgmkr handles interruption signals (Ctrl+C) gracefully:
+- Catches SIGINT and SIGTERM signals
+- Cleans up temporary files and directories
+- Provides clear feedback about cleanup operations
+- Exits with appropriate status codes
+
+If you need to stop a long-running operation, simply press Ctrl+C and imgmkr will clean up after itself.
+
 ## License
 
 [MIT No Attribution License](LICENSE)

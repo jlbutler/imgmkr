@@ -127,6 +127,20 @@ The utility now supports concurrent layer creation to improve performance when b
 
 This enhancement significantly reduces build times for multi-layer images, especially when creating large layers that are I/O bound.
 
+### 6.4 Graceful Shutdown ✅ IMPLEMENTED
+
+The utility now handles interruption signals gracefully to ensure clean cleanup of temporary resources. This enhancement includes:
+
+- **Signal Handling**: Catches SIGINT (Ctrl+C) and SIGTERM signals
+- **Clean Cleanup**: Removes temporary files and directories even when interrupted
+- **User Feedback**: Provides clear messages about cleanup operations
+- **Proper Exit Codes**: Returns standard exit codes (130 for SIGINT)
+- **Thread Safety**: Ensures cleanup happens only once even with concurrent operations
+
+**Usage**: Press Ctrl+C during any long-running operation and imgmkr will clean up gracefully.
+
+This ensures that temporary build directories don't accumulate on the system when users interrupt long-running image creation operations.
+
 ### 6.3 Mock rootfs file layouts ✅ IMPLEMENTED
 
 The utility now provides a `--mock-fs` option that creates mock root file systems, adding various directories and mock files to fill up a given layer, vs single files. This enhancement includes:
@@ -141,7 +155,7 @@ The utility now provides a `--mock-fs` option that creates mock root file system
 
 Since test images are meant to exercise client image pull operations, including image layer unpack, decompression and unpack of layers will perform differently with one large single file vs a more realistic mock rootfs. This option creates such a mock file system rather than the default behavior of one large file.
 
-### 6.4 Additional Future Enhancements
+### 6.5 Additional Future Enhancements
 
 The utility could create images itself using the OCI SDK without calling out to another tool. This would remove the need for finch, docker, etc.
 

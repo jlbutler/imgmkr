@@ -8,11 +8,13 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 )
 
@@ -166,6 +168,65 @@ func (pt *ProgressTracker) UpdateProgress(layerNum int, layerSize int64, duratio
 func (pt *ProgressTracker) Finish() {
 	elapsed := time.Since(pt.startTime)
 	fmt.Printf("\n✅ All layers completed in %s\n", elapsed.Round(time.Millisecond))
+}
+
+// CleanupManager handles graceful shutdown and cleanup
+type CleanupManager struct {
+	buildDir    string
+	cleanupDone chan bool
+	interrupted bool
+	mu          sync.Mutex
+}
+
+// NewCleanupManager creates a new cleanup manager
+func NewCleanupManager(buildDir string) *CleanupManager {
+	return &CleanupManager{
+		buildDir:    buildDir,
+		cleanupDone: make(chan bool, 1),
+	}
+}
+
+// SetupSignalHandling sets up signal handlers for graceful shutdown
+func (cm *CleanupManager) SetupSignalHandling() {
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-sigChan
+		cm.mu.Lock()
+		if !cm.interrupted {
+			cm.interrupted = true
+			fmt.Printf("\n\n🛑 Received %s signal, cleaning up...\n", sig)
+			cm.cleanup()
+			fmt.Println("✅ Cleanup completed")
+			os.Exit(130) // Standard exit code for SIGINT
+		}
+		cm.mu.Unlock()
+	}()
+}
+
+// Cleanup performs the cleanup operation
+func (cm *CleanupManager) cleanup() {
+	if cm.buildDir != "" {
+		err := os.RemoveAll(cm.buildDir)
+		if err != nil {
+			fmt.Printf("⚠️  Warning: Failed to clean up temporary directory %s: %v\n", cm.buildDir, err)
+		} else {
+			fmt.Printf("🗑️  Removed temporary directory: %s\n", cm.buildDir)
+		}
+		// Clear the buildDir to prevent double cleanup
+		cm.buildDir = ""
+	}
+}
+
+// GracefulCleanup performs cleanup if not already interrupted
+func (cm *CleanupManager) GracefulCleanup() {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	if !cm.interrupted {
+		cm.cleanup()
+	}
 }
 
 // createLayersConcurrently creates multiple layers concurrently using a worker pool
@@ -489,15 +550,6 @@ func buildImage(buildDir string, repoTag string) error {
 	return nil
 }
 
-// cleanup removes the temporary build directory
-func cleanup(buildDir string) {
-	fmt.Println("Cleaning up temporary files...")
-	err := os.RemoveAll(buildDir)
-	if err != nil {
-		fmt.Printf("Warning: Failed to clean up temporary directory %s: %v\n", buildDir, err)
-	}
-}
-
 func main() {
 	// Parse command line flags
 	flag.Parse()
@@ -529,7 +581,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error creating temporary directory: %v", err)
 	}
-	defer cleanup(buildDir)
+
+	// Setup cleanup manager and signal handling
+	cleanupManager := NewCleanupManager(buildDir)
+	cleanupManager.SetupSignalHandling()
+	defer cleanupManager.GracefulCleanup()
 
 	// Create layer files
 	fmt.Printf("Creating layer files (max %d concurrent)...\n", *maxConcurrent)

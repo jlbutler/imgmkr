@@ -127,7 +127,7 @@ The utility now supports concurrent layer creation to improve performance when b
 
 This enhancement significantly reduces build times for multi-layer images, especially when creating large layers that are I/O bound.
 
-### 6.4 Graceful Shutdown ✅ IMPLEMENTED
+### 6.3 Graceful Shutdown ✅ IMPLEMENTED
 
 The utility now handles interruption signals gracefully to ensure clean cleanup of temporary resources. This enhancement includes:
 
@@ -141,7 +141,7 @@ The utility now handles interruption signals gracefully to ensure clean cleanup 
 
 This ensures that temporary build directories don't accumulate on the system when users interrupt long-running image creation operations.
 
-### 6.3 Mock rootfs file layouts ✅ IMPLEMENTED
+### 6.4 Mock rootfs file layouts ✅ IMPLEMENTED
 
 The utility now provides a `--mock-fs` option that creates mock root file systems, adding various directories and mock files to fill up a given layer, vs single files. This enhancement includes:
 
@@ -160,5 +160,3 @@ Since test images are meant to exercise client image pull operations, including 
 The utility could create images itself using the OCI SDK without calling out to another tool. This would remove the need for finch, docker, etc.
 
 The utility could provide a `publish` option that implements an OCI registry client to publish to a provided registry by pushing the image.
-
-The utility could move to using BuildPacks instead of Dockerfile, if that offers more flexibility or performance improvements.

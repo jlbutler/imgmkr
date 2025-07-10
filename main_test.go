@@ -344,3 +344,47 @@ func TestCleanupManagerInterrupted(t *testing.T) {
 	// Clean up manually for test
 	os.RemoveAll(tempDir)
 }
+func TestCreateFileSizePlan(t *testing.T) {
+	// Test small layer (should not have very large files)
+	smallPlan := createFileSizePlan(10*MB, 20)
+	if len(smallPlan.VeryLargeFiles) > 0 {
+		t.Errorf("Small layer should not have very large files, got %d", len(smallPlan.VeryLargeFiles))
+	}
+
+	totalFiles := len(smallPlan.LargeFiles) + len(smallPlan.MediumFiles) + len(smallPlan.SmallFiles)
+	if totalFiles == 0 {
+		t.Errorf("Expected some files to be created, got %d", totalFiles)
+	}
+
+	// Test large layer (should have very large files)
+	largePlan := createFileSizePlan(2*GB, 100)
+	if len(largePlan.VeryLargeFiles) == 0 {
+		t.Errorf("Large layer should have very large files")
+	}
+
+	totalLargeFiles := len(largePlan.VeryLargeFiles) + len(largePlan.LargeFiles) + len(largePlan.MediumFiles) + len(largePlan.SmallFiles)
+	if totalLargeFiles == 0 {
+		t.Errorf("Expected some files to be created, got %d", totalLargeFiles)
+	}
+
+	// Verify very large files are in correct range
+	for _, size := range largePlan.VeryLargeFiles {
+		if size < 512*MB {
+			t.Errorf("Very large file too small: %d", size)
+		}
+	}
+
+	// Verify large files are at least 10MB (allowing flexibility for remainder distribution)
+	for _, size := range largePlan.LargeFiles {
+		if size < 10*MB {
+			t.Errorf("Large file too small: %d", size)
+		}
+	}
+
+	// Verify small files are at least 1KB
+	for _, size := range largePlan.SmallFiles {
+		if size < 1024 {
+			t.Errorf("Small file too small: %d", size)
+		}
+	}
+}

@@ -24,7 +24,7 @@ This utility creates mock OCI images for testing purposes. This enables a set of
 
 ### 2.2 Non-Functional Requirements
 
-- **Performance**: The utility should be fairly quick, but image creation performance is not a main consideration
+- **Performance**: The utility creates layers concurrently to optimize build times, especially for multi-layer images. Performance can be tuned via the --max-concurrent parameter.
 - **Usability**: As a typical command line utility, it should have help and usage for the command and its options and arguments
 - **Compatibility**: Images should be built for linux/amd64 by default
 
@@ -32,10 +32,12 @@ This utility creates mock OCI images for testing purposes. This enables a set of
 
 ### 3.1 User Interface
 
-imgmkr --num-layers [int] --layer-sizes [int,..] repo:tag
+imgmkr --num-layers [int] --layer-sizes [sizes] [--tmpdir-prefix [path]] [--max-concurrent [int]] repo:tag
 
 - num-layers: required, total number of layers to include
 - layer-sizes: required, comma-delineated list of image sizes in KB, MB, or GB (where KB is 1024 bytes, etc)
+- tmpdir-prefix: optional, directory prefix for temporary build files (default: system temp dir)
+- max-concurrent: optional, maximum number of layers to create concurrently (default: 5)
 
 imgmkr will create a local image by creating mock data and creating a custom Dockerfile to achieve the desired image configuration. The number of layers is specified by `num-layers`, and the image layer sizes detailed by a comma-delineated list of sizes in MB specified by `layer-sizes`.
 
@@ -51,17 +53,22 @@ Once the utility is invoked, the options and arguments are checked for validity,
 
 ### 4.2 Mock data generation
 
-Each layer is populated by a single file of the size specified for that layer. The utility may implement a mock file creator, or simply use a utility like `mkfile` if that's just as good. All layer content is created in a temp build directory, organized by subdirectory per layer.
+Each layer is populated by a single file of the size specified for that layer. The utility creates mock files filled with data to achieve the specified layer sizes. All layer content is created in a temporary build directory, organized by subdirectory per layer.
+
+The temporary build directory location can be controlled via the `--tmpdir-prefix` option:
+
+- **Default behavior**: Uses the system's default temporary directory (typically tmpfs on Linux/macOS)
+- **Custom prefix**: When `--tmpdir-prefix` is specified, creates the build directory under the specified path (useful for very large images that might exceed tmpfs capacity)
 
 For example:
 
-/tmp/foo-build/
-layer1/1GB-file
-layer2/4GB-file
-layer3/2GB-file
-layer4/512MB-file
-layer5/128MB-file
-layer6/512KB-file
+/tmp/imgmkr-build-xyz/
+layer1/1.00GB-file
+layer2/4.00GB-file
+layer3/2.00GB-file
+layer4/512.00MB-file
+layer5/128.00MB-file
+layer6/512.00KB-file
 
 ### 4.3 Image specification
 
@@ -95,6 +102,33 @@ The temp build directory and all its contents are removed once the image is buil
 - Users can create one-off test images of varying layouts with a single invocation.
 
 ## 6. Future Enhancements
+
+### 6.1 Configurable Temporary Directory ✅ IMPLEMENTED
+
+The utility now supports configurable temporary directory location to handle very large images that might exceed tmpfs capacity. This enhancement includes:
+
+- **Flexible Storage**: Users can specify where temporary build files are created
+- **tmpfs vs rootfs**: Default uses system temp (tmpfs) for speed, custom prefix allows rootfs for capacity
+- **Large Image Support**: Prevents "no space left on device" errors when creating multi-gigabyte test images
+- **Backward Compatibility**: Maintains default behavior when no prefix is specified
+
+**Usage**: `imgmkr --num-layers 3 --layer-sizes 1GB,2GB,5GB --tmpdir-prefix /tmp large-image:v1`
+
+### 6.2 Concurrent Layer Creation ✅ IMPLEMENTED
+
+The utility now supports concurrent layer creation to improve performance when building images with multiple layers. This enhancement includes:
+
+- **Concurrent Processing**: Layers are created in parallel using goroutines and a worker pool pattern
+- **Configurable Concurrency**: Users can control the level of concurrency with the `--max-concurrent` flag (default: 5)
+- **Progress Reporting**: Real-time progress updates show when each layer completes, even when created concurrently
+- **Error Handling**: If any layer creation fails, all remaining operations are stopped and the error is reported
+- **Resource Management**: The worker pool prevents overwhelming the system with too many concurrent operations
+
+**Usage**: `imgmkr --num-layers 5 --layer-sizes 1GB,2GB,1GB,500MB,100MB --max-concurrent 3 myimage:latest`
+
+This enhancement significantly reduces build times for multi-layer images, especially when creating large layers that are I/O bound.
+
+### 6.3 Additional Future Enhancements
 
 The utility could create images itself using the OCI SDK without calling out to another tool. This would remove the need for finch, docker, etc.
 

@@ -28,7 +28,7 @@ go build
 ## Usage
 
 ```bash
-imgmkr --num-layers [int] --layer-sizes [sizes] [--tmpdir-prefix [path]] repo:tag
+imgmkr --num-layers [int] --layer-sizes [sizes] [--tmpdir-prefix [path]] [--max-concurrent [int]] repo:tag
 ```
 
 ### Parameters
@@ -36,6 +36,7 @@ imgmkr --num-layers [int] --layer-sizes [sizes] [--tmpdir-prefix [path]] repo:ta
 - `--num-layers`: Required. Total number of layers to include in the image.
 - `--layer-sizes`: Required. Comma-separated list of layer sizes with KB, MB, or GB suffixes (e.g., 512KB,1MB,2GB).
 - `--tmpdir-prefix`: Optional. Directory prefix for temporary build files. If not specified, uses the system default temp directory. Useful for very large images that might exceed tmpfs capacity.
+- `--max-concurrent`: Optional. Maximum number of layers to create concurrently (default: 5). Higher values may speed up creation but use more system resources.
 - `repo:tag`: Required. Repository and tag for the built image.
 
 ### Examples

@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -23,9 +24,10 @@ const (
 
 // Command line arguments
 var (
-	numLayers    = flag.Int("num-layers", 0, "Number of layers to create")
-	layerSizes   = flag.String("layer-sizes", "", "Comma-separated list of layer sizes (e.g., 512KB,1MB,2GB)")
-	tmpdirPrefix = flag.String("tmpdir-prefix", "", "Directory prefix for temporary build files (default: system temp dir)")
+	numLayers     = flag.Int("num-layers", 0, "Number of layers to create")
+	layerSizes    = flag.String("layer-sizes", "", "Comma-separated list of layer sizes (e.g., 512KB,1MB,2GB)")
+	tmpdirPrefix  = flag.String("tmpdir-prefix", "", "Directory prefix for temporary build files (default: system temp dir)")
+	maxConcurrent = flag.Int("max-concurrent", 5, "Maximum number of layers to create concurrently")
 )
 
 // parseSize parses a string like "512KB", "1.5MB", "2.75GB" into bytes
@@ -87,6 +89,78 @@ func createTempDir(prefix string) (string, error) {
 		return "", fmt.Errorf("failed to create temp directory: %w", err)
 	}
 	return tempDir, nil
+}
+
+// LayerJob represents a layer creation job
+type LayerJob struct {
+	layerNum int
+	layerDir string
+	size     int64
+}
+
+// LayerResult represents the result of a layer creation job
+type LayerResult struct {
+	layerNum int
+	duration time.Duration
+	err      error
+}
+
+// createLayersConcurrently creates multiple layers concurrently using a worker pool
+func createLayersConcurrently(buildDir string, sizes []int64, maxWorkers int) error {
+	jobs := make(chan LayerJob, len(sizes))
+	results := make(chan LayerResult, len(sizes))
+
+	// Start workers
+	var wg sync.WaitGroup
+	for w := 0; w < maxWorkers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for job := range jobs {
+				startTime := time.Now()
+				err := createLayerFile(job.layerDir, job.size)
+				results <- LayerResult{
+					layerNum: job.layerNum,
+					duration: time.Since(startTime),
+					err:      err,
+				}
+			}
+		}()
+	}
+
+	// Send jobs
+	go func() {
+		defer close(jobs)
+		for i, size := range sizes {
+			layerDir := filepath.Join(buildDir, fmt.Sprintf("layer%d", i+1))
+			jobs <- LayerJob{
+				layerNum: i + 1,
+				layerDir: layerDir,
+				size:     size,
+			}
+		}
+	}()
+
+	// Collect results
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	// Process results and report progress
+	completed := make(map[int]LayerResult)
+	for result := range results {
+		if result.err != nil {
+			return fmt.Errorf("error creating layer %d: %w", result.layerNum, result.err)
+		}
+		completed[result.layerNum] = result
+		fmt.Printf("Layer %d (%s) created in %s\n",
+			result.layerNum,
+			formatSize(sizes[result.layerNum-1]),
+			result.duration)
+	}
+
+	return nil
 }
 
 // createLayerFile creates a file of the specified size filled with random data
@@ -251,19 +325,10 @@ func main() {
 	defer cleanup(buildDir)
 
 	// Create layer files
-	fmt.Println("Creating layer files...")
-	for i, size := range sizes {
-		layerDir := filepath.Join(buildDir, fmt.Sprintf("layer%d", i+1))
-		fmt.Printf("Creating layer %d (%s)...\n", i+1, formatSize(size))
-
-		startTime := time.Now()
-		err := createLayerFile(layerDir, size)
-		if err != nil {
-			log.Fatalf("Error creating layer file: %v", err)
-		}
-
-		elapsed := time.Since(startTime)
-		fmt.Printf("Layer %d created in %s\n", i+1, elapsed)
+	fmt.Printf("Creating layer files (max %d concurrent)...\n", *maxConcurrent)
+	err = createLayersConcurrently(buildDir, sizes, *maxConcurrent)
+	if err != nil {
+		log.Fatalf("Error creating layer files: %v", err)
 	}
 
 	// Create Dockerfile

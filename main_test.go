@@ -1,8 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestParseSize(t *testing.T) {
@@ -121,5 +124,66 @@ func TestCreateTempDir(t *testing.T) {
 	// Verify directory exists and has correct prefix
 	if _, err := os.Stat(tempDir2); os.IsNotExist(err) {
 		t.Errorf("Temp directory was not created: %s", tempDir2)
+	}
+}
+func TestCreateLayersConcurrently(t *testing.T) {
+	// Create a temporary directory for testing
+	tempDir, err := os.MkdirTemp("", "imgmkr-test-")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Test with small sizes to avoid long test times
+	sizes := []int64{1024, 2048, 4096} // 1KB, 2KB, 4KB
+	maxWorkers := 2
+
+	err = createLayersConcurrently(tempDir, sizes, maxWorkers)
+	if err != nil {
+		t.Errorf("Unexpected error in createLayersConcurrently: %v", err)
+	}
+
+	// Verify that all layer directories were created
+	for i := range sizes {
+		layerDir := filepath.Join(tempDir, fmt.Sprintf("layer%d", i+1))
+		if _, err := os.Stat(layerDir); os.IsNotExist(err) {
+			t.Errorf("Layer directory %s was not created", layerDir)
+		}
+	}
+}
+
+func TestLayerJobAndResult(t *testing.T) {
+	// Test LayerJob struct
+	job := LayerJob{
+		layerNum: 1,
+		layerDir: "/tmp/test",
+		size:     1024,
+	}
+
+	if job.layerNum != 1 {
+		t.Errorf("Expected layerNum 1, got %d", job.layerNum)
+	}
+	if job.layerDir != "/tmp/test" {
+		t.Errorf("Expected layerDir '/tmp/test', got %s", job.layerDir)
+	}
+	if job.size != 1024 {
+		t.Errorf("Expected size 1024, got %d", job.size)
+	}
+
+	// Test LayerResult struct
+	result := LayerResult{
+		layerNum: 1,
+		duration: time.Second,
+		err:      nil,
+	}
+
+	if result.layerNum != 1 {
+		t.Errorf("Expected layerNum 1, got %d", result.layerNum)
+	}
+	if result.duration != time.Second {
+		t.Errorf("Expected duration 1s, got %v", result.duration)
+	}
+	if result.err != nil {
+		t.Errorf("Expected no error, got %v", result.err)
 	}
 }

@@ -28,13 +28,12 @@ go build
 ## Usage
 
 ```bash
-imgmkr --num-layers [int] --layer-sizes [sizes] [--tmpdir-prefix [path]] [--max-concurrent [int]] repo:tag
+imgmkr --layer-sizes [sizes] [--tmpdir-prefix [path]] [--max-concurrent [int]] repo:tag
 ```
 
 ### Parameters
 
-- `--num-layers`: Required. Total number of layers to include in the image.
-- `--layer-sizes`: Required. Comma-separated list of layer sizes with KB, MB, or GB suffixes (e.g., 512KB,1MB,2GB).
+- `--layer-sizes`: Required. Comma-separated list of layer sizes with KB, MB, or GB suffixes (e.g., 512KB,1MB,2GB). The number of layers is automatically inferred from this list.
 - `--tmpdir-prefix`: Optional. Directory prefix for temporary build files. If not specified, uses the system default temp directory. Useful for very large images that might exceed tmpfs capacity.
 - `--max-concurrent`: Optional. Maximum number of layers to create concurrently (default: 5). Higher values may speed up creation but use more system resources.
 - `repo:tag`: Required. Repository and tag for the built image.
@@ -44,19 +43,19 @@ imgmkr --num-layers [int] --layer-sizes [sizes] [--tmpdir-prefix [path]] [--max-
 Create an image with 3 layers of different sizes:
 
 ```bash
-imgmkr --num-layers 3 --layer-sizes 10MB,50MB,100MB myrepo:latest
+imgmkr --layer-sizes 10MB,50MB,100MB myrepo:latest
 ```
 
 Create an image with 2 layers, one small and one large:
 
 ```bash
-imgmkr --num-layers 2 --layer-sizes 1MB,1GB test-image:v1
+imgmkr --layer-sizes 1MB,1GB test-image:v1
 ```
 
 Create a very large image using rootfs instead of tmpfs:
 
 ```bash
-imgmkr --num-layers 3 --layer-sizes 1GB,2GB,5GB --tmpdir-prefix /tmp large-image:v1
+imgmkr --layer-sizes 1GB,2GB,5GB --tmpdir-prefix /tmp large-image:v1
 ```
 
 ## How It Works

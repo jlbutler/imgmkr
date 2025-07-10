@@ -32,14 +32,13 @@ This utility creates mock OCI images for testing purposes. This enables a set of
 
 ### 3.1 User Interface
 
-imgmkr --num-layers [int] --layer-sizes [sizes] [--tmpdir-prefix [path]] [--max-concurrent [int]] repo:tag
+imgmkr --layer-sizes [sizes] [--tmpdir-prefix [path]] [--max-concurrent [int]] repo:tag
 
-- num-layers: required, total number of layers to include
-- layer-sizes: required, comma-delineated list of image sizes in KB, MB, or GB (where KB is 1024 bytes, etc)
+- layer-sizes: required, comma-delineated list of image sizes in KB, MB, or GB (where KB is 1024 bytes, etc). The number of layers is automatically inferred from this list.
 - tmpdir-prefix: optional, directory prefix for temporary build files (default: system temp dir)
 - max-concurrent: optional, maximum number of layers to create concurrently (default: 5)
 
-imgmkr will create a local image by creating mock data and creating a custom Dockerfile to achieve the desired image configuration. The number of layers is specified by `num-layers`, and the image layer sizes detailed by a comma-delineated list of sizes in MB specified by `layer-sizes`.
+imgmkr will create a local image by creating mock data and creating a custom Dockerfile to achieve the desired image configuration. The number of layers is automatically inferred from the comma-delineated list of sizes specified by `layer-sizes`.
 
 ### 3.2 Technology Stack
 
@@ -112,7 +111,7 @@ The utility now supports configurable temporary directory location to handle ver
 - **Large Image Support**: Prevents "no space left on device" errors when creating multi-gigabyte test images
 - **Backward Compatibility**: Maintains default behavior when no prefix is specified
 
-**Usage**: `imgmkr --num-layers 3 --layer-sizes 1GB,2GB,5GB --tmpdir-prefix /tmp large-image:v1`
+**Usage**: `imgmkr --layer-sizes 1GB,2GB,5GB --tmpdir-prefix /tmp large-image:v1`
 
 ### 6.2 Concurrent Layer Creation ✅ IMPLEMENTED
 
@@ -124,7 +123,7 @@ The utility now supports concurrent layer creation to improve performance when b
 - **Error Handling**: If any layer creation fails, all remaining operations are stopped and the error is reported
 - **Resource Management**: The worker pool prevents overwhelming the system with too many concurrent operations
 
-**Usage**: `imgmkr --num-layers 5 --layer-sizes 1GB,2GB,1GB,500MB,100MB --max-concurrent 3 myimage:latest`
+**Usage**: `imgmkr --layer-sizes 1GB,2GB,1GB,500MB,100MB --max-concurrent 3 myimage:latest`
 
 This enhancement significantly reduces build times for multi-layer images, especially when creating large layers that are I/O bound.
 

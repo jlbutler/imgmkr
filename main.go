@@ -24,7 +24,6 @@ const (
 
 // Command line arguments
 var (
-	numLayers     = flag.Int("num-layers", 0, "Number of layers to create")
 	layerSizes    = flag.String("layer-sizes", "", "Comma-separated list of layer sizes (e.g., 512KB,1MB,2GB)")
 	tmpdirPrefix  = flag.String("tmpdir-prefix", "", "Directory prefix for temporary build files (default: system temp dir)")
 	maxConcurrent = flag.Int("max-concurrent", 5, "Maximum number of layers to create concurrently")
@@ -290,10 +289,6 @@ func main() {
 	flag.Parse()
 
 	// Validate required flags
-	if *numLayers <= 0 {
-		log.Fatal("--num-layers must be a positive integer")
-	}
-
 	if *layerSizes == "" {
 		log.Fatal("--layer-sizes is required")
 	}
@@ -311,10 +306,8 @@ func main() {
 		log.Fatalf("Error parsing layer sizes: %v", err)
 	}
 
-	// Validate that the number of layers matches the number of sizes
-	if len(sizes) != *numLayers {
-		log.Fatalf("Number of layer sizes (%d) does not match number of layers (%d)", len(sizes), *numLayers)
-	}
+	// Number of layers is inferred from the layer sizes
+	numLayers := len(sizes)
 
 	// Create a temporary build directory
 	fmt.Println("Creating temporary build directory...")
@@ -333,7 +326,7 @@ func main() {
 
 	// Create Dockerfile
 	fmt.Println("Creating Dockerfile...")
-	err = createDockerfile(buildDir, *numLayers)
+	err = createDockerfile(buildDir, numLayers)
 	if err != nil {
 		log.Fatalf("Error creating Dockerfile: %v", err)
 	}

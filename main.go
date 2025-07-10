@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,6 +28,9 @@ var (
 	layerSizes    = flag.String("layer-sizes", "", "Comma-separated list of layer sizes (e.g., 512KB,1MB,2GB)")
 	tmpdirPrefix  = flag.String("tmpdir-prefix", "", "Directory prefix for temporary build files (default: system temp dir)")
 	maxConcurrent = flag.Int("max-concurrent", 5, "Maximum number of layers to create concurrently")
+	mockFS        = flag.Bool("mock-fs", false, "Create mock filesystem structure instead of single files")
+	maxDepth      = flag.Int("max-depth", 3, "Maximum directory depth for mock filesystem (only used with --mock-fs)")
+	targetFiles   = flag.Int("target-files", 0, "Target number of files per layer for mock filesystem (default: calculated based on layer size)")
 )
 
 // parseSize parses a string like "512KB", "1.5MB", "2.75GB" into bytes
@@ -117,7 +121,12 @@ func createLayersConcurrently(buildDir string, sizes []int64, maxWorkers int) er
 			defer wg.Done()
 			for job := range jobs {
 				startTime := time.Now()
-				err := createLayerFile(job.layerDir, job.size)
+				var err error
+				if *mockFS {
+					err = createMockFilesystem(job.layerDir, job.size, *maxDepth, *targetFiles)
+				} else {
+					err = createLayerFile(job.layerDir, job.size)
+				}
 				results <- LayerResult{
 					layerNum: job.layerNum,
 					duration: time.Since(startTime),
@@ -157,6 +166,143 @@ func createLayersConcurrently(buildDir string, sizes []int64, maxWorkers int) er
 			result.layerNum,
 			formatSize(sizes[result.layerNum-1]),
 			result.duration)
+	}
+
+	return nil
+}
+
+// createMockFilesystem creates a mock filesystem structure with multiple files and directories
+func createMockFilesystem(layerDir string, size int64, maxDepth int, targetFiles int) error {
+	// Create the layer directory if it doesn't exist
+	if err := os.MkdirAll(layerDir, 0755); err != nil {
+		return fmt.Errorf("failed to create layer directory: %w", err)
+	}
+
+	// Calculate target files if not specified (roughly 1 file per 10MB, min 5, max 1000)
+	if targetFiles == 0 {
+		targetFiles = int(size / (10 * MB))
+		if targetFiles < 5 {
+			targetFiles = 5
+		}
+		if targetFiles > 1000 {
+			targetFiles = 1000
+		}
+	}
+
+	// Create directory structure and files
+	return createFilesInDirectory(layerDir, size, maxDepth, targetFiles, 0)
+}
+
+// createFilesInDirectory recursively creates files and directories
+func createFilesInDirectory(dir string, remainingSize int64, maxDepth int, remainingFiles int, currentDepth int) error {
+	if remainingSize <= 0 || remainingFiles <= 0 {
+		return nil
+	}
+
+	// Decide how many files to create at this level vs subdirectories
+	filesAtThisLevel := remainingFiles / 3 // Roughly 1/3 of files at current level
+	if filesAtThisLevel < 1 {
+		filesAtThisLevel = remainingFiles
+	}
+
+	// Create files at this level
+	for i := 0; i < filesAtThisLevel && remainingSize > 0 && remainingFiles > 0; i++ {
+		// Random file size between 1KB and min(512MB, remainingSize)
+		maxFileSize := int64(512 * MB)
+		if remainingSize < maxFileSize {
+			maxFileSize = remainingSize
+		}
+
+		var fileSize int64
+		if maxFileSize <= 1024 {
+			// If remaining size is very small, just use it all
+			fileSize = remainingSize
+		} else {
+			// Random between 1KB and maxFileSize
+			fileSize = rand.Int63n(maxFileSize-1024) + 1024
+			// Don't make the file larger than remaining size
+			if fileSize > remainingSize {
+				fileSize = remainingSize
+			}
+		}
+
+		fileName := fmt.Sprintf("%s-file", formatSize(fileSize))
+		filePath := filepath.Join(dir, fileName)
+
+		err := createSingleFile(filePath, fileSize)
+		if err != nil {
+			return err
+		}
+
+		remainingSize -= fileSize
+		remainingFiles--
+	}
+
+	// Create subdirectories if we haven't reached max depth and have remaining files/size
+	if currentDepth < maxDepth && remainingFiles > 0 && remainingSize > 0 {
+		// Create 2-4 subdirectories
+		numSubdirs := rand.Intn(3) + 2 // 2-4 subdirectories
+		if numSubdirs > remainingFiles {
+			numSubdirs = remainingFiles
+		}
+
+		for i := 0; i < numSubdirs && remainingFiles > 0 && remainingSize > 0; i++ {
+			subdirName := fmt.Sprintf("dir%d", i+1)
+			subdirPath := filepath.Join(dir, subdirName)
+
+			if err := os.MkdirAll(subdirPath, 0755); err != nil {
+				return fmt.Errorf("failed to create subdirectory: %w", err)
+			}
+
+			// Distribute remaining files and size among subdirectories
+			filesForSubdir := remainingFiles / (numSubdirs - i)
+			sizeForSubdir := remainingSize / int64(numSubdirs-i)
+
+			err := createFilesInDirectory(subdirPath, sizeForSubdir, maxDepth, filesForSubdir, currentDepth+1)
+			if err != nil {
+				return err
+			}
+
+			// Update remaining counts (approximate, since createFilesInDirectory might not use exact amounts)
+			remainingFiles -= filesForSubdir
+			remainingSize -= sizeForSubdir
+		}
+	}
+
+	return nil
+}
+
+// createSingleFile creates a single file of the specified size
+func createSingleFile(filePath string, size int64) error {
+	file, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	defer file.Close()
+
+	// Fill the file with data in chunks
+	const chunkSize = 10 * MB
+	remaining := size
+
+	for remaining > 0 {
+		writeSize := remaining
+		if writeSize > chunkSize {
+			writeSize = chunkSize
+		}
+
+		// Create a buffer with data
+		data := make([]byte, writeSize)
+		for i := range data {
+			data[i] = byte(rand.Intn(256))
+		}
+
+		// Write the data to the file
+		_, err = file.Write(data)
+		if err != nil {
+			return fmt.Errorf("failed to write data to file: %w", err)
+		}
+
+		remaining -= writeSize
 	}
 
 	return nil

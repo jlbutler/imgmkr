@@ -127,12 +127,24 @@ The utility now supports concurrent layer creation to improve performance when b
 
 This enhancement significantly reduces build times for multi-layer images, especially when creating large layers that are I/O bound.
 
-### 6.3 Additional Future Enhancements
+### 6.3 Mock rootfs file layouts ✅ IMPLEMENTED
+
+The utility now provides a `--mock-fs` option that creates mock root file systems, adding various directories and mock files to fill up a given layer, vs single files. This enhancement includes:
+
+- **Realistic Filesystem Structure**: Creates nested directories with multiple files of varying sizes
+- **Configurable Depth**: Users can control directory nesting with `--max-depth` (default: 3)
+- **File Count Control**: Users can specify target file count with `--target-files` or let the system calculate based on layer size
+- **Random File Sizes**: Files range from 1KB to 512MB with random distribution
+- **Size Accuracy**: Total file content matches the specified layer size
+
+**Usage**: `imgmkr --layer-sizes 1GB --mock-fs --max-depth 4 --target-files 200 complex-image:v1`
+
+Since test images are meant to exercise client image pull operations, including image layer unpack, decompression and unpack of layers will perform differently with one large single file vs a more realistic mock rootfs. This option creates such a mock file system rather than the default behavior of one large file.
+
+### 6.4 Additional Future Enhancements
 
 The utility could create images itself using the OCI SDK without calling out to another tool. This would remove the need for finch, docker, etc.
 
 The utility could provide a `publish` option that implements an OCI registry client to publish to a provided registry by pushing the image.
-
-The utility could provide a `mock-fs` option that creates mock root file systems, adding various directories and mock files to fill up a given layer, vs single files.
 
 The utility could move to using BuildPacks instead of Dockerfile, if that offers more flexibility or performance improvements.

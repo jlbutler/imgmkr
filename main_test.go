@@ -187,3 +187,63 @@ func TestLayerJobAndResult(t *testing.T) {
 		t.Errorf("Expected no error, got %v", result.err)
 	}
 }
+func TestCreateMockFilesystem(t *testing.T) {
+	// Create a temporary directory for testing
+	tempDir, err := os.MkdirTemp("", "imgmkr-mockfs-test-")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Test with small size to avoid long test times
+	layerDir := filepath.Join(tempDir, "test-layer")
+	size := int64(10 * 1024) // 10KB
+	maxDepth := 2
+	targetFiles := 3
+
+	err = createMockFilesystem(layerDir, size, maxDepth, targetFiles)
+	if err != nil {
+		t.Errorf("Unexpected error in createMockFilesystem: %v", err)
+	}
+
+	// Verify that the layer directory was created
+	if _, err := os.Stat(layerDir); os.IsNotExist(err) {
+		t.Errorf("Layer directory %s was not created", layerDir)
+	}
+
+	// Verify that some files were created (exact count may vary due to algorithm)
+	files, err := filepath.Glob(filepath.Join(layerDir, "**/*"))
+	if err != nil {
+		t.Errorf("Error checking created files: %v", err)
+	}
+	if len(files) == 0 {
+		t.Errorf("No files were created in mock filesystem")
+	}
+}
+
+func TestCreateSingleFile(t *testing.T) {
+	// Create a temporary directory for testing
+	tempDir, err := os.MkdirTemp("", "imgmkr-singlefile-test-")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Test creating a small file
+	filePath := filepath.Join(tempDir, "test-file")
+	size := int64(1024) // 1KB
+
+	err = createSingleFile(filePath, size)
+	if err != nil {
+		t.Errorf("Unexpected error in createSingleFile: %v", err)
+	}
+
+	// Verify file was created with correct size
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		t.Errorf("File was not created: %v", err)
+	}
+	if fileInfo.Size() != size {
+		t.Errorf("File size mismatch: expected %d, got %d", size, fileInfo.Size())
+	}
+}

@@ -28,7 +28,7 @@ go build
 ## Usage
 
 ```bash
-imgmkr --layer-sizes [sizes] [--tmpdir-prefix [path]] [--max-concurrent [int]] repo:tag
+imgmkr --layer-sizes [sizes] [--tmpdir-prefix [path]] [--max-concurrent [int]] [--mock-fs] [--max-depth [int]] [--target-files [int]] repo:tag
 ```
 
 ### Parameters
@@ -36,6 +36,9 @@ imgmkr --layer-sizes [sizes] [--tmpdir-prefix [path]] [--max-concurrent [int]] r
 - `--layer-sizes`: Required. Comma-separated list of layer sizes with KB, MB, or GB suffixes (e.g., 512KB,1MB,2GB). The number of layers is automatically inferred from this list.
 - `--tmpdir-prefix`: Optional. Directory prefix for temporary build files. If not specified, uses the system default temp directory. Useful for very large images that might exceed tmpfs capacity.
 - `--max-concurrent`: Optional. Maximum number of layers to create concurrently (default: 5). Higher values may speed up creation but use more system resources.
+- `--mock-fs`: Optional. Create mock filesystem structure with multiple files and directories instead of single large files per layer.
+- `--max-depth`: Optional. Maximum directory depth for mock filesystem (default: 3). Only used with --mock-fs.
+- `--target-files`: Optional. Target number of files per layer for mock filesystem (default: calculated based on layer size). Only used with --mock-fs.
 - `repo:tag`: Required. Repository and tag for the built image.
 
 ### Examples
@@ -56,6 +59,18 @@ Create a very large image using rootfs instead of tmpfs:
 
 ```bash
 imgmkr --layer-sizes 1GB,2GB,5GB --tmpdir-prefix /tmp large-image:v1
+```
+
+Create an image with mock filesystem structure instead of single files:
+
+```bash
+imgmkr --layer-sizes 500MB,1GB --mock-fs realistic-image:v1
+```
+
+Create a complex mock filesystem with custom depth and file count:
+
+```bash
+imgmkr --layer-sizes 1GB --mock-fs --max-depth 4 --target-files 200 complex-image:v1
 ```
 
 ## How It Works

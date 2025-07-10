@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -245,5 +246,31 @@ func TestCreateSingleFile(t *testing.T) {
 	}
 	if fileInfo.Size() != size {
 		t.Errorf("File size mismatch: expected %d, got %d", size, fileInfo.Size())
+	}
+}
+func TestProgressTracker(t *testing.T) {
+	totalLayers := 3
+	totalSize := int64(6 * 1024) // 6KB total
+
+	tracker := NewProgressTracker(totalLayers, totalSize)
+
+	if tracker.totalLayers != totalLayers {
+		t.Errorf("Expected totalLayers %d, got %d", totalLayers, tracker.totalLayers)
+	}
+	if tracker.totalSize != totalSize {
+		t.Errorf("Expected totalSize %d, got %d", totalSize, tracker.totalSize)
+	}
+
+	// Test progress updates
+	tracker.UpdateProgress(1, 2048, time.Millisecond*100)
+	tracker.UpdateProgress(2, 2048, time.Millisecond*150)
+	tracker.UpdateProgress(3, 2048, time.Millisecond*120)
+
+	// Verify final counts
+	if atomic.LoadInt64(&tracker.completedLayers) != 3 {
+		t.Errorf("Expected 3 completed layers, got %d", atomic.LoadInt64(&tracker.completedLayers))
+	}
+	if atomic.LoadInt64(&tracker.completedSize) != totalSize {
+		t.Errorf("Expected completed size %d, got %d", totalSize, atomic.LoadInt64(&tracker.completedSize))
 	}
 }

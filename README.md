@@ -76,10 +76,21 @@ imgmkr --layer-sizes 1GB --mock-fs --max-depth 4 --target-files 200 complex-imag
 ## How It Works
 
 1. Creates a temporary build directory
-2. Generates mock data files of specified sizes for each layer
+2. Generates mock data files of specified sizes for each layer (with real-time progress tracking)
 3. Creates a Dockerfile that adds each layer
 4. Builds the image using finch (preferred) or docker (fallback)
 5. Cleans up temporary files after building
+
+## Progress Tracking
+
+imgmkr provides real-time progress updates during layer creation, including:
+- Visual progress bar showing completion percentage
+- Layer count progress (e.g., 3/5 layers)
+- Data size progress (e.g., 2.5GB/5GB)
+- Individual layer completion times
+- Estimated time to completion (ETA)
+
+This is especially useful when creating large images with multiple layers.
 
 ## License
 

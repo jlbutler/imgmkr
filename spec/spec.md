@@ -119,7 +119,7 @@ The utility now supports concurrent layer creation to improve performance when b
 
 - **Concurrent Processing**: Layers are created in parallel using goroutines and a worker pool pattern
 - **Configurable Concurrency**: Users can control the level of concurrency with the `--max-concurrent` flag (default: 5)
-- **Progress Reporting**: Real-time progress updates show when each layer completes, even when created concurrently
+- **Progress Reporting**: Real-time progress updates with visual progress bars, completion percentages, and ETA estimates
 - **Error Handling**: If any layer creation fails, all remaining operations are stopped and the error is reported
 - **Resource Management**: The worker pool prevents overwhelming the system with too many concurrent operations
 

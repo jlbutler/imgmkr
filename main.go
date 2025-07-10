@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -107,8 +108,76 @@ type LayerResult struct {
 	err      error
 }
 
+// ProgressTracker tracks progress across concurrent operations
+type ProgressTracker struct {
+	totalLayers     int
+	completedLayers int64
+	totalSize       int64
+	completedSize   int64
+	startTime       time.Time
+	mu              sync.Mutex
+}
+
+// NewProgressTracker creates a new progress tracker
+func NewProgressTracker(totalLayers int, totalSize int64) *ProgressTracker {
+	return &ProgressTracker{
+		totalLayers: totalLayers,
+		totalSize:   totalSize,
+		startTime:   time.Now(),
+	}
+}
+
+// UpdateProgress updates the progress and displays current status
+func (pt *ProgressTracker) UpdateProgress(layerNum int, layerSize int64, duration time.Duration) {
+	atomic.AddInt64(&pt.completedLayers, 1)
+	atomic.AddInt64(&pt.completedSize, layerSize)
+
+	completed := atomic.LoadInt64(&pt.completedLayers)
+	completedSize := atomic.LoadInt64(&pt.completedSize)
+
+	// Calculate progress percentage
+	progressPercent := float64(completed) / float64(pt.totalLayers) * 100
+	sizeProgressPercent := float64(completedSize) / float64(pt.totalSize) * 100
+
+	// Calculate ETA
+	elapsed := time.Since(pt.startTime)
+	var eta time.Duration
+	if completed > 0 {
+		avgTimePerLayer := elapsed / time.Duration(completed)
+		remainingLayers := int64(pt.totalLayers) - completed
+		eta = avgTimePerLayer * time.Duration(remainingLayers)
+	}
+
+	// Create progress bar
+	barWidth := 30
+	filledWidth := int(float64(barWidth) * progressPercent / 100)
+	bar := strings.Repeat("█", filledWidth) + strings.Repeat("░", barWidth-filledWidth)
+
+	// Display progress
+	fmt.Printf("\r[%s] %d/%d layers (%.1f%%) | %s/%s (%.1f%%) | Layer %d: %s | ETA: %s",
+		bar,
+		completed, pt.totalLayers, progressPercent,
+		formatSize(completedSize), formatSize(pt.totalSize), sizeProgressPercent,
+		layerNum, duration.Round(time.Millisecond),
+		eta.Round(time.Second))
+}
+
+// Finish completes the progress display
+func (pt *ProgressTracker) Finish() {
+	elapsed := time.Since(pt.startTime)
+	fmt.Printf("\n✅ All layers completed in %s\n", elapsed.Round(time.Millisecond))
+}
+
 // createLayersConcurrently creates multiple layers concurrently using a worker pool
 func createLayersConcurrently(buildDir string, sizes []int64, maxWorkers int) error {
+	// Calculate total size for progress tracking
+	var totalSize int64
+	for _, size := range sizes {
+		totalSize += size
+	}
+
+	// Create progress tracker
+	progress := NewProgressTracker(len(sizes), totalSize)
 	jobs := make(chan LayerJob, len(sizes))
 	results := make(chan LayerResult, len(sizes))
 
@@ -161,11 +230,11 @@ func createLayersConcurrently(buildDir string, sizes []int64, maxWorkers int) er
 			return fmt.Errorf("error creating layer %d: %w", result.layerNum, result.err)
 		}
 		completed[result.layerNum] = result
-		fmt.Printf("Layer %d (%s) created in %s\n",
-			result.layerNum,
-			formatSize(sizes[result.layerNum-1]),
-			result.duration)
+		progress.UpdateProgress(result.layerNum, sizes[result.layerNum-1], result.duration)
 	}
+
+	// Finish progress display
+	progress.Finish()
 
 	return nil
 }

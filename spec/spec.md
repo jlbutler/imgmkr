@@ -34,7 +34,13 @@ This utility creates mock OCI images for testing purposes. This enables a set of
 
 imgmkr --layer-sizes [sizes] [--tmpdir-prefix [path]] [--max-concurrent [int]] repo:tag
 
-- layer-sizes: required, comma-delineated list of image sizes in KB, MB, or GB (where KB is 1024 bytes, etc). The number of layers is automatically inferred from this list.
+- layer-sizes: required, comma-delineated list of image sizes with flexible format support:
+  - Bytes: 8150, 8B, 8b, 8byte, 8bytes
+  - Kilobytes: 512KB, 512kb, 512K, 512k (where KB is 1024 bytes)
+  - Megabytes: 1MB, 1mb, 1M, 1m
+  - Gigabytes: 2GB, 2gb, 2G, 2g
+  - Decimal values: 1.5MB, 2.75GB
+  - The number of layers is automatically inferred from this list.
 - tmpdir-prefix: optional, directory prefix for temporary build files (default: system temp dir)
 - max-concurrent: optional, maximum number of layers to create concurrently (default: 5)
 

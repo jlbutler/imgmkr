@@ -15,15 +15,45 @@ func TestParseSize(t *testing.T) {
 		expected int64
 		hasError bool
 	}{
+		// Bytes variations
+		{"8150", 8150, false},
+		{"8B", 8, false},
+		{"8b", 8, false},
+		{"8byte", 8, false},
+		{"8bytes", 8, false},
+		{"8BYTES", 8, false},
+
+		// Kilobytes variations
 		{"512KB", 512 * KB, false},
+		{"512kb", 512 * KB, false},
+		{"512K", 512 * KB, false},
+		{"512k", 512 * KB, false},
+		{"1.5K", int64(1.5 * KB), false},
+
+		// Megabytes variations
 		{"1MB", 1 * MB, false},
-		{"2GB", 2 * GB, false},
+		{"1mb", 1 * MB, false},
+		{"1M", 1 * MB, false},
+		{"1m", 1 * MB, false},
 		{"1.5MB", int64(1.5 * MB), false},
+		{"2.75m", int64(2.75 * MB), false},
+
+		// Gigabytes variations
+		{"2GB", 2 * GB, false},
+		{"2gb", 2 * GB, false},
+		{"2G", 2 * GB, false},
+		{"2g", 2 * GB, false},
 		{"2.75GB", int64(2.75 * GB), false},
+		{"1.5G", int64(1.5 * GB), false},
+
+		// Edge cases and errors
 		{"1024", 1024, false},
+		{"0", 0, false},
 		{"invalid", 0, true},
 		{"", 0, true},
 		{"1.5XB", 0, true},
+		{"MB", 0, true},
+		{"1.2.3MB", 0, true},
 	}
 
 	for _, test := range tests {

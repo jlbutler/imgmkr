@@ -27,7 +27,7 @@ const (
 
 // Command line arguments
 var (
-	layerSizes    = flag.String("layer-sizes", "", "Comma-separated list of layer sizes (e.g., 512KB,1MB,2GB)")
+	layerSizes    = flag.String("layer-sizes", "", "Comma-separated list of layer sizes (e.g., 512KB,1MB,2GB,8150)")
 	tmpdirPrefix  = flag.String("tmpdir-prefix", "", "Directory prefix for temporary build files (default: system temp dir)")
 	maxConcurrent = flag.Int("max-concurrent", 5, "Maximum number of layers to create concurrently")
 	mockFS        = flag.Bool("mock-fs", false, "Create mock filesystem structure instead of single files")
@@ -35,25 +35,53 @@ var (
 	targetFiles   = flag.Int("target-files", 0, "Target number of files per layer for mock filesystem (default: calculated based on layer size)")
 )
 
-// parseSize parses a string like "512KB", "1.5MB", "2.75GB" into bytes
+// parseSize parses a string like "512KB", "1.5MB", "2.75GB", "8150", "8B" into bytes
 func parseSize(sizeStr string) (int64, error) {
 	sizeStr = strings.TrimSpace(sizeStr)
+	if sizeStr == "" {
+		return 0, fmt.Errorf("empty size string")
+	}
 
-	// Check for size suffixes
+	// Convert to uppercase for easier matching
+	upperStr := strings.ToUpper(sizeStr)
+
+	// Check for size suffixes (case-insensitive, with variations)
 	var multiplier float64 = 1
 	var numStr string
 
-	if strings.HasSuffix(sizeStr, "KB") {
+	// Bytes: B, b, bytes (or no suffix)
+	if strings.HasSuffix(upperStr, "B") && !strings.HasSuffix(upperStr, "KB") && !strings.HasSuffix(upperStr, "MB") && !strings.HasSuffix(upperStr, "GB") {
+		multiplier = 1
+		numStr = sizeStr[:len(sizeStr)-1]
+	} else if strings.HasSuffix(upperStr, "BYTES") {
+		multiplier = 1
+		numStr = sizeStr[:len(sizeStr)-5]
+	} else if strings.HasSuffix(upperStr, "BYTE") {
+		multiplier = 1
+		numStr = sizeStr[:len(sizeStr)-4]
+		// Kilobytes: KB, K, kb, k
+	} else if strings.HasSuffix(upperStr, "KB") {
 		multiplier = float64(KB)
 		numStr = sizeStr[:len(sizeStr)-2]
-	} else if strings.HasSuffix(sizeStr, "MB") {
+	} else if strings.HasSuffix(upperStr, "K") {
+		multiplier = float64(KB)
+		numStr = sizeStr[:len(sizeStr)-1]
+		// Megabytes: MB, M, mb, m
+	} else if strings.HasSuffix(upperStr, "MB") {
 		multiplier = float64(MB)
 		numStr = sizeStr[:len(sizeStr)-2]
-	} else if strings.HasSuffix(sizeStr, "GB") {
+	} else if strings.HasSuffix(upperStr, "M") {
+		multiplier = float64(MB)
+		numStr = sizeStr[:len(sizeStr)-1]
+		// Gigabytes: GB, G, gb, g
+	} else if strings.HasSuffix(upperStr, "GB") {
 		multiplier = float64(GB)
 		numStr = sizeStr[:len(sizeStr)-2]
+	} else if strings.HasSuffix(upperStr, "G") {
+		multiplier = float64(GB)
+		numStr = sizeStr[:len(sizeStr)-1]
 	} else {
-		// Assume bytes if no suffix
+		// No suffix - assume bytes
 		numStr = sizeStr
 	}
 
@@ -117,7 +145,6 @@ type ProgressTracker struct {
 	totalSize       int64
 	completedSize   int64
 	startTime       time.Time
-	mu              sync.Mutex
 }
 
 // NewProgressTracker creates a new progress tracker

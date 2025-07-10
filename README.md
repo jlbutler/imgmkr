@@ -33,7 +33,13 @@ imgmkr --layer-sizes [sizes] [--tmpdir-prefix [path]] [--max-concurrent [int]] [
 
 ### Parameters
 
-- `--layer-sizes`: Required. Comma-separated list of layer sizes with KB, MB, or GB suffixes (e.g., 512KB,1MB,2GB). The number of layers is automatically inferred from this list.
+- `--layer-sizes`: Required. Comma-separated list of layer sizes. Supports various formats:
+  - Bytes: `8150`, `8B`, `8b`, `8byte`, `8bytes`
+  - Kilobytes: `512KB`, `512kb`, `512K`, `512k`
+  - Megabytes: `1MB`, `1mb`, `1M`, `1m`
+  - Gigabytes: `2GB`, `2gb`, `2G`, `2g`
+  - Decimal values: `1.5MB`, `2.75GB`
+  - The number of layers is automatically inferred from this list.
 - `--tmpdir-prefix`: Optional. Directory prefix for temporary build files. If not specified, uses the system default temp directory. Useful for very large images that might exceed tmpfs capacity.
 - `--max-concurrent`: Optional. Maximum number of layers to create concurrently (default: 5). Higher values may speed up creation but use more system resources.
 - `--mock-fs`: Optional. Create mock filesystem structure with multiple files and directories instead of single large files per layer.

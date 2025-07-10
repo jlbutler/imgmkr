@@ -83,7 +83,7 @@ etc
 
 ### 4.4 Image build
 
-The image is then built using finch, docker, or other utility. On MacOS, use finch. On Linux, use docker. The build will result in a local image tagged as specified by the command line argument `repo:tag`.
+The image is then built using finch or docker. The utility tries finch first (preferred), then falls back to docker if finch is not available. The build will result in a local image tagged as specified by the command line argument `repo:tag`.
 
 ### 4.5 Cleanup
 

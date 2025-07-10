@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -392,18 +391,18 @@ func createDockerfile(buildDir string, numLayers int) error {
 
 // buildImage builds the Docker image using finch or docker
 func buildImage(buildDir string, repoTag string) error {
-	// Determine whether to use finch or docker
+	// Try finch first, fallback to docker if not available
 	var cmdName string
-	if runtime.GOOS == "darwin" {
+	_, err := exec.LookPath("finch")
+	if err == nil {
 		cmdName = "finch"
 	} else {
-		cmdName = "docker"
-	}
-
-	// Check if the command exists
-	_, err := exec.LookPath(cmdName)
-	if err != nil {
-		return fmt.Errorf("%s command not found: %w", cmdName, err)
+		_, err = exec.LookPath("docker")
+		if err == nil {
+			cmdName = "docker"
+		} else {
+			return fmt.Errorf("neither finch nor docker command found")
+		}
 	}
 
 	// Build the image

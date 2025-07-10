@@ -9,7 +9,7 @@ imgmkr creates mock OCI images for testing purposes. It allows you to create ima
 ## Requirements
 
 - Go 1.21 or later
-- Docker (on Linux) or Finch (on macOS)
+- Finch or Docker (finch preferred, docker as fallback)
 
 ## Installation
 
@@ -78,7 +78,7 @@ imgmkr --layer-sizes 1GB --mock-fs --max-depth 4 --target-files 200 complex-imag
 1. Creates a temporary build directory
 2. Generates mock data files of specified sizes for each layer
 3. Creates a Dockerfile that adds each layer
-4. Builds the image using finch (on macOS) or docker (on Linux)
+4. Builds the image using finch (preferred) or docker (fallback)
 5. Cleans up temporary files after building
 
 ## License
